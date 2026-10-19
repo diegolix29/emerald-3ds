@@ -144,18 +144,71 @@ def apply_preproc_cpp():
     """Apply changes to tools/preproc/asm_file.cpp"""
     file = UPSTREAM / "tools" / "preproc" / "asm_file.cpp"
     content = file.read_text()
-    old = """        if (m_buffer[m_pos] == '#')
+    old1 = """        if (m_buffer[m_pos] == '#')
         {
             currentHeaderLine = ParseLineSkipInEnum();
         }
         else if (m_buffer[m_pos] != ',')"""
-    new = """        if (m_buffer[m_pos] != ',')"""
-    if old in content:
-        content = content.replace(old, new)
+    new1 = """        if (m_buffer[m_pos] != ',')"""
+
+    # Remove the ParseLineSkipInEnum function implementation
+    old2 = """int AsmFile::ParseLineSkipInEnum(void)
+{
+    m_pos++;
+    while (m_buffer[m_pos] == ' ' || m_buffer[m_pos] == '\t')
+        m_pos++;
+
+     if (!IsAsciiDigit(m_buffer[m_pos]))
+        RaiseError("malformatted line indicator found inside `enum`, expected line number");
+
+    unsigned n = 0;
+    int digit = 0;
+    while ((digit = ConvertDigit(m_buffer[m_pos++], 10)) != -1)
+        n = 10 * n + digit;
+
+    while (m_buffer[m_pos] == ' ' || m_buffer[m_pos] == '\t')
+        m_pos++;
+
+    if (m_buffer[m_pos++] != '"')
+        RaiseError("malformatted line indicator found before `enum`, expected filename");
+
+    while (m_buffer[m_pos] != '"')
+    {
+        unsigned char c = m_buffer[m_pos++];
+
+        if (c == 0)
+        {
+            if (m_pos >= m_size)
+                RaiseError("unexpected EOF in line indicator");
+            else
+                RaiseError("unexpected null character in line indicator");
+        }
+
+        if (!IsAsciiPrintable(c))
+            RaiseError("unexpected character '\\x%02X' in line indicator", c);
+
+        if (c == '\\')
+        {
+            c = m_buffer[m_pos];
+            RaiseError("unexpected escape '\\%c' in line indicator", c);
+        }
+    }
+    return n - 1;
+}"""
+    new2 = ""
+
+    changed = False
+    if old1 in content:
+        content = content.replace(old1, new1)
+        changed = True
+    if old2 in content:
+        content = content.replace(old2, new2)
+        changed = True
+    if changed:
         file.write_text(content)
         print(f"Applied tools/preproc/asm_file.cpp")
     else:
-        print(f"Warning: tools/preproc/asm_file.cpp pattern not found")
+        print(f"Warning: tools/preproc/asm_file.cpp patterns not found")
 
 def apply_preproc_h():
     """Apply changes to tools/preproc/asm_file.h"""
