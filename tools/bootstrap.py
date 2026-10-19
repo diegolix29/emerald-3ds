@@ -35,7 +35,6 @@ import sys
 import os
 import tomllib
 from pathlib import Path
-from subprocess import CalledProcessError
 
 ROOT = Path(__file__).resolve().parents[1]
 OVERLAY = ["3ds_port", "builder", "tools"]
@@ -113,10 +112,6 @@ def main() -> int:
         if head != commit:
             fetch(tree, repo, commit)
         run(["git", "reset", "-q", "--hard", commit], cwd=tree)
-        # Apply manual patch changes for 0001-build-system-and-tools.patch
-        manual_patch_script = ROOT / "tools" / "apply_patches_manually.py"
-        if manual_patch_script.exists():
-            run([sys.executable, manual_patch_script], cwd=ROOT)
         (tree / ".emerald3ds-locale").unlink(missing_ok=True)
         if locale or previous_locale:
             # Objects and staged data of the other language must not be
@@ -152,20 +147,7 @@ def main() -> int:
                             capture_output=True).returncode != 0:
                         created.unlink()
         for patch in patches:
-            # Skip the first patch since we manually applied the critical changes
-            if patch.name == "0001-build-system-and-tools.patch":
-                print(f"Skipping {patch.name} (manually applied)")
-                continue
-            try:
-                run(["git", "apply", "--whitespace=nowarn", patch], cwd=tree)
-            except CalledProcessError:
-                # If patch fails, try with 3-way merge
-                print(f"Warning: Patch {patch.name} failed, trying with 3-way merge...")
-                try:
-                    run(["git", "apply", "--3way", patch], cwd=tree)
-                except CalledProcessError:
-                    print(f"Error: Patch {patch.name} failed even with 3-way merge")
-                    raise
+            run(["git", "apply", "--whitespace=nowarn", patch], cwd=tree)
         marker.write_text(digest + "\n")
     else:
         print("bootstrap: upstream %s with %d patches already in place" % (commit[:12], len(patches)))
