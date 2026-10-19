@@ -26,8 +26,12 @@ bool CtrFreeCam_Engaged(void);
 bool CtrFreeCam_Selected(void);
 
 /* OPTIONS' MOVE is FREE: with the camera engaged, the player walks in any
- * direction inside its tile (voxel_freemove.h) instead of by the grid's four. */
+ * direction over walkable tiles (voxel_freemove.h) instead of by the grid's four. */
 bool CtrFreeCam_FreeWalk(void);
+
+/* The free walk entered another tile this frame: warps, steps and wild
+ * encounters should run as they do at the end of a grid step. */
+bool CtrFreeMove_TookStep(void);
 
 /* The camera's bearing, radians: 0 looks south, pi/2 east. */
 float CtrFreeCam_Yaw(void);

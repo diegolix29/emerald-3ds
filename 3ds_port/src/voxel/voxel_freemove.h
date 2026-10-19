@@ -4,15 +4,14 @@
  * grid.
  *
  * FreeMove.lua walks the player continuously. Here the decompilation keeps
- * what makes Emerald Emerald - the tile step with its collision, ledges,
- * doors, warps, encounters, trainers' sight and bumps - and this module adds
- * the part between the tiles. The player has a position P inside the tile G
- * the game has it on, an offset (ox, oz) from the tile's centre, in tiles:
- * the stick moves P freely within the tile, and when P reaches the tile's
- * edge the game is asked for a step in that direction by pressing it - or
- * P stops at the edge, if the game would not take the step, and slides along
- * it with the other axis. Everything that is drawn (the player's card, the
- * camera) stands at P; the game's own step animation is only its shadow.
+ * what makes Emerald Emerald - collision, ledges, doors, warps, encounters,
+ * trainers' sight and bumps - and this module walks P in any direction over
+ * the walkable tiles as one area, not one tile at a time. The player has a
+ * position P on the tile G the game has it on, an offset (ox, oz) from that
+ * tile's centre, in tiles: the stick moves P freely, walls stop it and it
+ * slides along them, and when P crosses into another walkable tile the game
+ * is told so its tile can follow (without a grid walk). Everything that is
+ * drawn (the player's card, the camera) stands at P.
  *
  * Pure state and math, no game types: voxel_entities.c reads the offset,
  * 3ds_game_bridge.c steps it once a frame with the game's collision, and the
@@ -26,10 +25,6 @@
 /* The grid's four directions, as the decompilation's DIR_*. */
 enum { VOXEL_FM_NONE = 0, VOXEL_FM_SOUTH = 1, VOXEL_FM_NORTH = 2, VOXEL_FM_WEST = 3, VOXEL_FM_EAST = 4 };
 
-/* How far before a tile's edge the step is asked for, tiles: the game turns
- * the player towards a new direction before it walks (a frame), and this is
- * that frame's walk. */
-#define VOXEL_FM_LEAD 0.12f
 /* A direction counts as aimed at a wall when the stick's component along it
  * is this much of the stick: only then is the game asked for the step, so
  * that it bumps, pushes a boulder, takes an arrow warp - a diagonal slides. */
@@ -70,8 +65,8 @@ void VoxelFreeMove_Sync(VoxelFreeMove *fm, int gx, int gz);
 
 /*
  * One frame of driving. (vx, vz) is the walk in tiles per frame, east and
- * south positive. Returns the direction to press this frame (VOXEL_FM_NONE
- * for none). `blocked` may be NULL (nothing is in the way).
+ * south positive. Returns the direction the game's tile should follow, or
+ * a wall to bump (VOXEL_FM_NONE for none). `blocked` may be NULL.
  */
 int VoxelFreeMove_Step(VoxelFreeMove *fm, int gx, int gz, float vx, float vz,
                        VoxelFreeMoveBlocked blocked, void *context);

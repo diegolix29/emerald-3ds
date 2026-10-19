@@ -7,7 +7,6 @@
 #include "voxel_freemove.h"
 
 #define VOXEL_FM_EDGE 0.5f
-#define VOXEL_FM_LIMIT 0.7f
 
 static VoxelFreeMove sMove;
 
@@ -44,19 +43,23 @@ void VoxelFreeMove_Sync(VoxelFreeMove *fm, int gx, int gz)
         return;
     fm->gx = gx;
     fm->gz = gz;
-    if ((dx < 0 ? -dx : dx) + (dz < 0 ? -dz : dz) == 1)
     {
-        /* A step: the tile moved by one, the player did not. */
-        fm->ox -= (float)dx;
-        fm->oz -= (float)dz;
-    }
-    else
-    {
-        /* A warp, a ledge's jump, a map's coordinates changing: the game
-         * has put the player somewhere, which is where the picture goes
-         * too, on its own for a moment. */
-        fm->ox = fm->oz = 0.0f;
-        fm->blend = 0.0f;
+        int adx = dx < 0 ? -dx : dx, adz = dz < 0 ? -dz : dz;
+
+        if (adx <= 1 && adz <= 1)
+        {
+            /* The game's tile followed P: keep the same world point. */
+            fm->ox -= (float)dx;
+            fm->oz -= (float)dz;
+        }
+        else
+        {
+            /* A warp, a ledge's jump, a map's coordinates changing: the game
+             * has put the player somewhere, which is where the picture goes
+             * too, on its own for a moment. */
+            fm->ox = fm->oz = 0.0f;
+            fm->blend = 0.0f;
+        }
     }
 }
 
@@ -123,36 +126,27 @@ int VoxelFreeMove_Step(VoxelFreeMove *fm, int gx, int gz, float vx, float vz,
             continue;
         side = m > 0.0f ? 1.0f : -1.0f;
         n = *o[axis] + m;
-        if (side * n > VOXEL_FM_EDGE - VOXEL_FM_LEAD)
+        if (side * n > VOXEL_FM_EDGE)
         {
             int dir = axis == 0 ? (side > 0.0f ? VOXEL_FM_EAST : VOXEL_FM_WEST)
                                 : (side > 0.0f ? VOXEL_FM_SOUTH : VOXEL_FM_NORTH);
 
-            if (pressed != VOXEL_FM_NONE)
+            if (blocked != NULL && blocked(context, dir))
             {
-                /* One step a frame: the other axis waits at its lead. */
-                n = side * (VOXEL_FM_EDGE - VOXEL_FM_LEAD);
-                if (side * *o[axis] > side * n)
-                    n = *o[axis];
-            }
-            else if (blocked != NULL && blocked(context, dir))
-            {
-                /* The game would not take it: stop at the edge and slide.
-                 * Aimed straight at it, the game is asked anyway, to bump,
-                 * to push, to take the warp that waits on that edge. */
+                /* A wall (or a ledge the game must jump): stop at the face
+                 * and slide. Aimed straight at it, the game is asked, to
+                 * bump, to push, to take the warp that waits on that edge. */
                 n = Clampf(n, -VOXEL_FM_EDGE, VOXEL_FM_EDGE);
-                if (fabsf(m) >= VOXEL_FM_ALIGNED * magnitude)
+                if (pressed == VOXEL_FM_NONE && fabsf(m) >= VOXEL_FM_ALIGNED * magnitude)
                     pressed = dir;
             }
-            else
+            else if (pressed == VOXEL_FM_NONE)
             {
-                /* Ask for the step; P may not pass the edge until the game
-                 * has made it (the next Sync moves the tile under P). */
-                n = Clampf(n, -VOXEL_FM_EDGE, VOXEL_FM_EDGE);
+                /* Walkable: P keeps going; the game's tile is asked to follow. */
                 pressed = dir;
             }
         }
-        *o[axis] = Clampf(n, -VOXEL_FM_LIMIT, VOXEL_FM_LIMIT);
+        *o[axis] = n;
     }
     return pressed;
 }

@@ -41,7 +41,7 @@ static const char *const sVoxelDepths[] = {"25%", "50%", "75%", "100%", "125%", 
 /* The camera (3ds_freecam.h): the orbit, from the player's eyes, or from
  * behind their shoulder. */
 /* How the player walks with the camera on 1ST or 3RD: by the grid's four
- * directions, or free in any (voxel_freemove.h). */
+ * directions, or free over walkable tiles (voxel_freemove.h). */
 static const char *const sVoxelMove[] = {CTR_TEXT("GRID", "CUADRÍCULA", "GRILLE", "GRIGLIA"), CTR_TEXT("FREE", "LIBRE", "LIBRE", "LIBERO")};
 static const char *const sVoxelCamera[] = {CTR_TEXT("ORBIT", "ORBITAL", "ORBITE", "ORBITA"), CTR_TEXT("1ST", "1ª", "1RE", "1ª"), CTR_TEXT("3RD", "3ª", "3E", "3ª")};
 #endif

@@ -234,9 +234,9 @@ static bool GetObjectWorldPos(const struct ObjectEvent *obj, const struct Sprite
     {
         /*
          * Free walking (voxel_freemove.h): the player stands where the
-         * stick has taken it inside the tile the game has it on, not where
-         * the game's step has got to. Everything placed from the player -
-         * the card, what it stands in, the camera - follows from here.
+         * stick has taken it, not where a grid step has got to. Everything
+         * placed from the player - the card, what it stands in, the camera -
+         * follows from here.
          */
         VoxelFreeMove *move = VoxelFreeMove_Get();
 

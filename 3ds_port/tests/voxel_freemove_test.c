@@ -1,11 +1,9 @@
 /*
  * Host test of the free walking (voxel_freemove.c) against a model of the
- * game's grid: a step is asked for by pressing a direction, the game turns
- * the player first when it faces another way, then steps - the tile changes
- * at once and the step takes `stepFrames` before the next one can start -
- * and refuses walls. What is checked is what the player sees: P = tile +
- * offset moves smoothly, never enters a wall, slides along one, and does not
- * jitter or step on its own.
+ * game's grid: P walks continuously over walkable tiles; the game is asked
+ * to follow when P crosses an edge, and refuses walls. What is checked is
+ * what the player sees: P = tile + offset moves smoothly, never enters a
+ * wall, slides along one, and does not jitter at tile edges.
  */
 #include <math.h>
 #include <stdio.h>
@@ -55,34 +53,25 @@ static int Blocked(void *context, int dir)
     return IsWall(g, g->gx + dx, g->gz + dz);
 }
 
-/* The game's frame given the direction pressed. */
+/* The game's frame given the direction asked: the tile follows at once
+ * (as FreeWalkCommit does), or bumps a wall. */
 static void GameFrame(Game *g, int dir)
 {
     int dx, dz;
 
-    if (g->busy > 0)
-        --g->busy;
     if (dir == VOXEL_FM_NONE)
         return;
     ++g->presses;
-    if (g->busy > 0)
-        return;
-    if (g->facing != dir)
-    {
-        g->facing = dir; /* the turn frame */
-        g->busy = 1;
-        return;
-    }
     Delta(dir, &dx, &dz);
     if (IsWall(g, g->gx + dx, g->gz + dz))
     {
         ++g->bumps;
         return;
     }
+    g->facing = dir;
     g->gx += dx;
     g->gz += dz;
     ++g->steps;
-    g->busy = g->stepFrames;
 }
 
 typedef struct
@@ -166,12 +155,12 @@ static void TestRun(void)
         Frame(&r, 1.0f / 8.0f, 0.0f);
     CHECK(r.maxJump < 1.0f / 8.0f + 0.002f, "P jumped %f running", r.maxJump);
     CHECK(r.px > 2.0f + 6.0f, "ran only to %f", r.px);
-    /* P faster than the game takes steps is held back by it, not run ahead. */
+    /* Analog speed is the motion: P is not held at each tile waiting for the game. */
     Begin(&r, 2, 10, 16);
     for (int f = 0; f < 16 * 4; ++f)
         Frame(&r, 1.0f / 6.0f, 0.0f);
-    CHECK(r.px < 2.0f + 4.0f + 1.2f, "P ran ahead of the game: %f", r.px);
-    CHECK(r.maxJump < 1.0f / 6.0f + 0.002f, "P jumped %f held back", r.maxJump);
+    CHECK(fabsf(r.px - (2.0f + 16.0f * 4.0f / 6.0f)) < 0.15f, "P stalled at tiles: %f", r.px);
+    CHECK(r.maxJump < 1.0f / 6.0f + 0.002f, "P jumped %f analog", r.maxJump);
 }
 
 static void TestSlowAnalog(void)
@@ -273,7 +262,7 @@ static void TestStopAndReverse(void)
         Frame(&r, 1.0f / 16.0f, 0.0f);
     steps = r.game.steps;
     beforeStops = r.game.presses;
-    /* Let go: the game finishes the step it began and P stands. */
+    /* Let go: the game's tile stops following and P stands. */
     for (int f = 0; f < 120; ++f)
         Frame(&r, 0.0f, 0.0f);
     CHECK(r.game.steps <= steps + 1, "the game kept walking after the stick was let go: %d -> %d", steps, r.game.steps);

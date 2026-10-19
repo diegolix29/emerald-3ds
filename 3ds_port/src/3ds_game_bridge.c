@@ -4,6 +4,7 @@
 #include "main.h"
 #include "overworld.h"
 #include "event_object_movement.h"
+#include "fieldmap.h"
 #include "field_player_avatar.h"
 #include "script.h"
 #include "palette.h"
@@ -65,15 +66,24 @@ void CtrEmu_EndVBlank(void)
  *
  * Two ways to walk. With OPTIONS' MOVE on FREE and the player on foot, the
  * walk is free (voxel_freemove.h): the stick moves the player in any
- * direction inside its tile and the game is asked for the step - by
- * pressing a direction - as the player reaches a tile's edge. Otherwise
+ * direction over walkable tiles, and the game's tile follows without a grid
+ * walk. A wall, a ledge or a warp still asks the game by pressing. Otherwise
  * (on a bike, surfing, MOVE on GRID) the stick's direction, turned by the
  * camera's yaw, is the one of the four the game is pressed.
  */
 
+static bool sFreeWalkTookStep;
+
+bool CtrFreeMove_TookStep(void)
+{
+    bool took = sFreeWalkTookStep;
+
+    sFreeWalkTookStep = false;
+    return took;
+}
+
 /* The game's own answer to a step from the player's tile, for the free walk:
- * refused by a wall, an object, a ledge's wrong side - but a ledge it jumps
- * is let through, as is whatever the game handles by being pressed. */
+ * refused by a wall, an object, a ledge. */
 static int FreeWalkBlocked(void *context, int dir)
 {
     struct ObjectEvent *player = &gObjectEvents[gPlayerAvatar.objectEventId];
@@ -83,9 +93,39 @@ static int FreeWalkBlocked(void *context, int dir)
     MoveCoords((u8)dir, &x, &y);
     if (GetCollisionAtCoords(player, x, y, (u32)dir) == COLLISION_NONE)
         return 0;
-    if (GetLedgeJumpDirection(x, y, (u8)dir) != DIR_NONE)
-        return 0;
     return 1;
+}
+
+/* Put the game's tile under P without starting a walk animation. */
+static void FreeWalkCommit(int dir)
+{
+    struct ObjectEvent *player = &gObjectEvents[gPlayerAvatar.objectEventId];
+    s16 x = player->currentCoords.x, y = player->currentCoords.y;
+    s16 dx = 0, dy = 0;
+
+    MoveCoords((u8)dir, &x, &y);
+    if (player->heldMovementActive)
+        ObjectEventClearHeldMovement(player);
+    ShiftObjectEventCoords(player, x, y);
+    ShiftStillObjectEventCoords(player);
+    player->currentMetatileBehavior = MapGridGetMetatileBehaviorAt(x, y);
+    ObjectEventUpdateElevation(player);
+    SetObjectEventDirection(player, (u8)dir);
+    switch (dir)
+    {
+    case DIR_SOUTH: dy = 1; break;
+    case DIR_NORTH: dy = -1; break;
+    case DIR_WEST:  dx = -1; break;
+    case DIR_EAST:  dx = 1; break;
+    default: break;
+    }
+    if (dx != 0 || dy != 0)
+    {
+        CameraMove(dx, dy);
+        UpdateObjectEventsForCameraUpdate(dx, dy);
+    }
+    gPlayerAvatar.runningState = MOVING;
+    sFreeWalkTookStep = true;
 }
 
 /* Whether the player runs this step: B (or always, OPTIONS' RUN) with the
@@ -161,6 +201,13 @@ static u16 FreeCamKeysOnce(const CtrInput *input, u16 held)
         }
         dir = VoxelFreeMove_Step(move, player->currentCoords.x, player->currentCoords.y,
                                  wx * speed, wz * speed, FreeWalkBlocked, NULL);
+        if (dir != 0 && !FreeWalkBlocked(NULL, dir))
+        {
+            FreeWalkCommit(dir);
+            VoxelFreeMove_Sync(move, gObjectEvents[gPlayerAvatar.objectEventId].currentCoords.x,
+                               gObjectEvents[gPlayerAvatar.objectEventId].currentCoords.y);
+            dir = 0;
+        }
         if (dir == 0 && speed == 0.0f)
         {
             /* Standing at rest: turn to the look. */
@@ -223,6 +270,11 @@ static u16 FreeCamKeys(const CtrInput *input, u16 held)
     if (sTouched)
         held = (held & ~(CTR_KEY_L | CTR_KEY_R | CTR_KEY_DPAD)) | sDpad;
     return held;
+}
+#else
+bool CtrFreeMove_TookStep(void)
+{
+    return false;
 }
 #endif
 
