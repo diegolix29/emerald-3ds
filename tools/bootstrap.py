@@ -113,6 +113,10 @@ def main() -> int:
         if head != commit:
             fetch(tree, repo, commit)
         run(["git", "reset", "-q", "--hard", commit], cwd=tree)
+        # Apply manual patch changes for 0001-build-system-and-tools.patch
+        manual_patch_script = ROOT / "tools" / "apply_patches_manually.py"
+        if manual_patch_script.exists():
+            run([sys.executable, manual_patch_script], cwd=ROOT)
         (tree / ".emerald3ds-locale").unlink(missing_ok=True)
         if locale or previous_locale:
             # Objects and staged data of the other language must not be
