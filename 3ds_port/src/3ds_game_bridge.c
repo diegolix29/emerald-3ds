@@ -71,12 +71,12 @@ void CtrEmu_EndVBlank(void)
  * camera's yaw, is the one of the four the game is pressed.
  */
 
- /* The game's own answer to a step from the player's tile, for the free walk:
-  * refused by a wall, an object, a ledge's wrong side - but a ledge it jumps
-  * is let through, as is whatever the game handles by being pressed. */
-static int FreeWalkBlocked(void* context, int dir)
+/* The game's own answer to a step from the player's tile, for the free walk:
+ * refused by a wall, an object, a ledge's wrong side - but a ledge it jumps
+ * is let through, as is whatever the game handles by being pressed. */
+static int FreeWalkBlocked(void *context, int dir)
 {
-    struct ObjectEvent* player = &gObjectEvents[gPlayerAvatar.objectEventId];
+    struct ObjectEvent *player = &gObjectEvents[gPlayerAvatar.objectEventId];
     s16 x = player->currentCoords.x, y = player->currentCoords.y;
 
     (void)context;
@@ -92,7 +92,7 @@ static int FreeWalkBlocked(void* context, int dir)
  * running shoes, where the game lets it. */
 static bool FreeWalkRuns(u16 held)
 {
-    const struct ObjectEvent* player = &gObjectEvents[gPlayerAvatar.objectEventId];
+    const struct ObjectEvent *player = &gObjectEvents[gPlayerAvatar.objectEventId];
     bool b = (held & B_BUTTON) != 0;
 
     if (CtrPlayer_RunAlways())
@@ -100,40 +100,25 @@ static bool FreeWalkRuns(u16 held)
     return b && FlagGet(FLAG_SYS_B_DASH) && !IsRunningDisallowed(player->currentMetatileBehavior);
 }
 
-/*
- * While the free walk has the player, the four directions are ITS to press
- * and nobody else's: the grid game would otherwise take a step of its own
- * from any direction still reaching it (the bottom screen's injected keys,
- * a key the pad's circle was mapped to, a second read of the keys in the
- * frame) and walk the player a tile while the free position walks it
- * another way - the two movements passing through each other. The walk
- * says here which of the four it presses this frame, and Platform_GetKeyInput
- * lets through that one and no other.
- */
-static bool sFreeWalkOwns;
-static u16 sFreeWalkDpad;
-
-static u16 FreeCamKeysOnce(const CtrInput* input, u16 held)
+static u16 FreeCamKeysOnce(const CtrInput *input, u16 held)
 {
     static int sPrevious;
     static unsigned sWarm;
     bool engaged = CtrFreeCam_Engaged() && !CtrScenario_Active();
     bool field = engaged && gMain.callback2 == CB2_Overworld && !gMain.inBattle
-        && !ArePlayerFieldControlsLocked() && !ScriptContext_IsEnabled()
-        && !gPaletteFade.active;
-    const struct ObjectEvent* player = &gObjectEvents[gPlayerAvatar.objectEventId];
-    VoxelFreeMove* move = VoxelFreeMove_Get();
+              && !ArePlayerFieldControlsLocked() && !ScriptContext_IsEnabled()
+              && !gPaletteFade.active;
+    const struct ObjectEvent *player = &gObjectEvents[gPlayerAvatar.objectEventId];
+    VoxelFreeMove *move = VoxelFreeMove_Get();
     bool freeWalk;
     float right = 0.0f, forward = 0.0f;
     int dir;
 
-    sFreeWalkOwns = false;
-    sFreeWalkDpad = 0;
     CtrFreeCam_SetDriving(field);
     freeWalk = field && CtrFreeCam_FreeWalk() && (gPlayerAvatar.flags & PLAYER_AVATAR_FLAG_ON_FOOT)
-        && !(gPlayerAvatar.flags & (PLAYER_AVATAR_FLAG_SURFING | PLAYER_AVATAR_FLAG_UNDERWATER
-            | PLAYER_AVATAR_FLAG_FORCED_MOVE))
-        && player->active;
+            && !(gPlayerAvatar.flags & (PLAYER_AVATAR_FLAG_SURFING | PLAYER_AVATAR_FLAG_UNDERWATER
+                                        | PLAYER_AVATAR_FLAG_FORCED_MOVE))
+            && player->active;
     if (!freeWalk)
         VoxelFreeMove_Idle(move, player->currentCoords.x, player->currentCoords.y);
     if (!field)
@@ -148,9 +133,9 @@ static u16 FreeCamKeysOnce(const CtrInput* input, u16 held)
     if (input->physicalHeld & CTR_KEY_DPAD)
     {
         right = ((input->physicalHeld & CTR_KEY_RIGHT) ? 128.0f : 0.0f)
-            - ((input->physicalHeld & CTR_KEY_LEFT) ? 128.0f : 0.0f);
+              - ((input->physicalHeld & CTR_KEY_LEFT) ? 128.0f : 0.0f);
         forward = ((input->physicalHeld & CTR_KEY_UP) ? 128.0f : 0.0f)
-            - ((input->physicalHeld & CTR_KEY_DOWN) ? 128.0f : 0.0f);
+                - ((input->physicalHeld & CTR_KEY_DOWN) ? 128.0f : 0.0f);
     }
     else
     {
@@ -175,25 +160,7 @@ static u16 FreeCamKeysOnce(const CtrInput* input, u16 held)
             speed = throw_ * (FreeWalkRuns(held) ? 1.0f / 8.0f : 1.0f / 16.0f);
         }
         dir = VoxelFreeMove_Step(move, player->currentCoords.x, player->currentCoords.y,
-            wx * speed, wz * speed, FreeWalkBlocked, NULL);
-        if (dir != 0)
-        {
-            /*
-             * The game turns in place - several frames of walking on the spot,
-             * with the step ignored - when pressed a direction other than the
-             * one it faces and it was not already moving. The free walk
-             * presses a direction only at a tile's edge, and nothing in
-             * between, so every change of heading (every diagonal's turn of
-             * axis) would stall the player at the edge for a turn while the
-             * stick carried the picture on: two movements fighting. The
-             * heading is already the stick's, so the game is told it is
-             * already facing it, and takes the step.
-             */
-            struct ObjectEvent* p = &gObjectEvents[gPlayerAvatar.objectEventId];
-
-            if (!p->singleMovementActive && !p->heldMovementActive)
-                p->movementDirection = (u16)dir;
-        }
+                                 wx * speed, wz * speed, FreeWalkBlocked, NULL);
         if (dir == 0 && speed == 0.0f)
         {
             /* Standing at rest: turn to the look. */
@@ -212,9 +179,9 @@ static u16 FreeCamKeysOnce(const CtrInput* input, u16 held)
         if (dir == 0)
         {
             bool free = gPlayerAvatar.tileTransitionState == T_NOT_MOVING
-                && !(gPlayerAvatar.flags & (PLAYER_AVATAR_FLAG_MACH_BIKE | PLAYER_AVATAR_FLAG_ACRO_BIKE))
-                && right > -CTR_CIRCLE_LEAVE && right < CTR_CIRCLE_LEAVE
-                && forward > -CTR_CIRCLE_LEAVE && forward < CTR_CIRCLE_LEAVE && !(held & CTR_KEY_A);
+                     && !(gPlayerAvatar.flags & (PLAYER_AVATAR_FLAG_MACH_BIKE | PLAYER_AVATAR_FLAG_ACRO_BIKE))
+                     && right > -CTR_CIRCLE_LEAVE && right < CTR_CIRCLE_LEAVE
+                     && forward > -CTR_CIRCLE_LEAVE && forward < CTR_CIRCLE_LEAVE && !(held & CTR_KEY_A);
 
             dir = CtrFreeCam_TurnTap(free, player->facingDirection);
         }
@@ -230,11 +197,6 @@ static u16 FreeCamKeysOnce(const CtrInput* input, u16 held)
     case 4: held |= CTR_KEY_RIGHT; break;
     default: break;
     }
-    if (freeWalk)
-    {
-        sFreeWalkOwns = true;
-        sFreeWalkDpad = held & CTR_KEY_DPAD;
-    }
     return held;
 }
 
@@ -242,7 +204,7 @@ static u16 FreeCamKeysOnce(const CtrInput* input, u16 held)
  * reads them again in between: the free walk must step once a game frame, or
  * the player would walk twice as fast. A second read in the same frame gets
  * the first's answer. */
-static u16 FreeCamKeys(const CtrInput* input, u16 held)
+static u16 FreeCamKeys(const CtrInput *input, u16 held)
 {
     static uint64_t sFrame = ~(uint64_t)0;
     static u16 sDpad;
@@ -266,7 +228,7 @@ static u16 FreeCamKeys(const CtrInput* input, u16 held)
 
 u16 Platform_GetKeyInput(void)
 {
-    const CtrInput* input = CtrInput_Get();
+    const CtrInput *input = CtrInput_Get();
     u16 held = input->held;
 
     /* Y is the 3DS's own SELECT: the registered item, as the bottom screen's
@@ -279,11 +241,6 @@ u16 Platform_GetKeyInput(void)
     /* The bottom screen's column takes the buttons while X has its focus;
      * its touch controls press buttons through here. */
     held = CtrBottom_FilterKeys(held) | CtrBottom_InjectedKeys();
-#if CTR_VOXEL_ENABLED
-    /* The free walk's own press, and no other direction (see sFreeWalkOwns). */
-    if (sFreeWalkOwns)
-        held = (held & ~CTR_KEY_DPAD) | (held & sFreeWalkDpad);
-#endif
     REG_KEYINPUT = held ^ KEYS_MASK;
     return held;
 }
@@ -301,10 +258,10 @@ void SoftReset(u32 flags)
 static u8 Bcd(unsigned value) { return ((value / 10) << 4) | (value % 10); }
 static unsigned FromBcd(u8 value) { return (value >> 4) * 10 + (value & 15); }
 
-void Platform_GetStatus(struct SiiRtcInfo* rtc) { rtc->status = sRtcStatus; }
-void Platform_SetStatus(struct SiiRtcInfo* rtc) { sRtcStatus = rtc->status; }
+void Platform_GetStatus(struct SiiRtcInfo *rtc) { rtc->status = sRtcStatus; }
+void Platform_SetStatus(struct SiiRtcInfo *rtc) { sRtcStatus = rtc->status; }
 
-void Platform_GetDateTime(struct SiiRtcInfo* rtc)
+void Platform_GetDateTime(struct SiiRtcInfo *rtc)
 {
     /* A measured scenario's own clock: the game seeds its random numbers
      * from it (3ds_scenario.c). */
@@ -324,9 +281,9 @@ void Platform_GetDateTime(struct SiiRtcInfo* rtc)
     rtc->second = Bcd(value.tm_sec);
 }
 
-void Platform_SetDateTime(struct SiiRtcInfo* rtc)
+void Platform_SetDateTime(struct SiiRtcInfo *rtc)
 {
-    struct tm value = { 0 };
+    struct tm value = {0};
     value.tm_year = 100 + FromBcd(rtc->year);
     value.tm_mon = FromBcd(rtc->month) - 1;
     value.tm_mday = FromBcd(rtc->day);
@@ -341,7 +298,7 @@ void Platform_SetDateTime(struct SiiRtcInfo* rtc)
     CtrLog_Write(CTR_LOG_GAME, "logical RTC updated (session only)");
 }
 
-void Platform_GetTime(struct SiiRtcInfo* rtc)
+void Platform_GetTime(struct SiiRtcInfo *rtc)
 {
     struct SiiRtcInfo full;
     Platform_GetDateTime(&full);
@@ -350,7 +307,7 @@ void Platform_GetTime(struct SiiRtcInfo* rtc)
     rtc->second = full.second;
 }
 
-void Platform_SetTime(struct SiiRtcInfo* rtc)
+void Platform_SetTime(struct SiiRtcInfo *rtc)
 {
     struct SiiRtcInfo full;
     Platform_GetDateTime(&full);
@@ -360,7 +317,7 @@ void Platform_SetTime(struct SiiRtcInfo* rtc)
     Platform_SetDateTime(&full);
 }
 
-void Platform_SetAlarm(u8* alarmData)
+void Platform_SetAlarm(u8 *alarmData)
 {
     (void)alarmData;
     CTR_UNIMPLEMENTED("RTC_ALARM: hardware alarm not supported");
@@ -375,20 +332,20 @@ void Platform_StoreSaveFile(void)
 {
 }
 
-void Platform_ReadFlash(u16 sector, u32 offset, u8* dest, u32 size)
+void Platform_ReadFlash(u16 sector, u32 offset, u8 *dest, u32 size)
 {
     u32 address = ((u32)sector << 12) + offset;
 
     if (address >= sizeof(FLASH_BASE) || size > sizeof(FLASH_BASE) - address)
     {
         CtrLog_Write(CTR_LOG_ERROR, "flash read out of range: %lu+%lu",
-            (unsigned long)address, (unsigned long)size);
+                     (unsigned long)address, (unsigned long)size);
         return;
     }
     memcpy(dest, FLASH_BASE + address, size);
 }
 
-void Platform_QueueAudio(s32* samples, s32 count)
+void Platform_QueueAudio(s32 *samples, s32 count)
 {
     /*
      * m4aSoundVSync hands over one mixer frame per VBlank, measured in bytes
