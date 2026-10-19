@@ -161,7 +161,7 @@ static u16 FreeCamKeysOnce(const CtrInput *input, u16 held)
         }
         dir = VoxelFreeMove_Step(move, player->currentCoords.x, player->currentCoords.y,
                                  wx * speed, wz * speed, FreeWalkBlocked, NULL);
-        if (speed == 0.0f)
+        if (dir == 0 && speed == 0.0f)
         {
             /* Standing at rest: turn to the look. */
             bool free = gPlayerAvatar.tileTransitionState == T_NOT_MOVING && !(held & CTR_KEY_A);
@@ -169,12 +169,7 @@ static u16 FreeCamKeysOnce(const CtrInput *input, u16 held)
             dir = CtrFreeCam_TurnTap(free, player->facingDirection);
         }
         else
-        {
             CtrFreeCam_TurnTap(false, 0);
-            /* In freemove mode, directly call the game's movement function instead of simulating buttons */
-            if (dir != 0)
-                PlayerWalkNormal((u8)dir);
-        }
     }
     else
     {
@@ -194,17 +189,13 @@ static u16 FreeCamKeysOnce(const CtrInput *input, u16 held)
             CtrFreeCam_TurnTap(false, 0);
     }
     held &= ~CTR_KEY_DPAD;
-    /* In freemove mode, don't press D-pad keys - freemove handles movement via offsets */
-    if (!freeWalk)
+    switch (dir)
     {
-        switch (dir)
-        {
-        case 1: held |= CTR_KEY_DOWN; break;
-        case 2: held |= CTR_KEY_UP; break;
-        case 3: held |= CTR_KEY_LEFT; break;
-        case 4: held |= CTR_KEY_RIGHT; break;
-        default: break;
-        }
+    case 1: held |= CTR_KEY_DOWN; break;
+    case 2: held |= CTR_KEY_UP; break;
+    case 3: held |= CTR_KEY_LEFT; break;
+    case 4: held |= CTR_KEY_RIGHT; break;
+    default: break;
     }
     return held;
 }
