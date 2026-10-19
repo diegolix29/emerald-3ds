@@ -9,23 +9,19 @@ UPSTREAM = Path(__file__).parents[1] / "build" / "upstream"
 def apply_audio_rules():
     """Apply changes to audio_rules.mk"""
     file = UPSTREAM / "audio_rules.mk"
-    content = file.read_text()
-    old = """$(SONG_BUILDDIR)/%.o: $(SONG_SUBDIR)/%.s
-	$(AS) $(ASFLAGS) -I sound -o $@ $<
-$(MID_BUILDDIR)/%.o: $(MID_ASM_DIR)/%.s
-	$(AS) $(ASFLAGS) -I sound -o $@ $<"""
-    new = """$(SONG_BUILDDIR)/%.o: $(SONG_SUBDIR)/%.s
-	$(ASM_PSEUDO_OP_CONV) $< | $(AS) $(ASFLAGS) -I sound -o $@
-	$(FIX_UNDERSCORE) $@
-$(MID_BUILDDIR)/%.o: $(MID_ASM_DIR)/%.s
-	$(ASM_PSEUDO_OP_CONV) $< | $(AS) $(ASFLAGS) -I sound -o $@
-	$(FIX_UNDERSCORE) $@"""
-    if old in content:
-        content = content.replace(old, new)
-        file.write_text(content)
-        print(f"Applied audio_rules.mk")
-    else:
-        print(f"Warning: audio_rules.mk pattern not found")
+    lines = file.read_text().splitlines(keepends=True)
+    new_lines = []
+    for i, line in enumerate(lines):
+        if i == 13:  # line 14 (0-indexed)
+            new_lines.append(line.replace('\t$(AS) $(ASFLAGS) -I sound -o $@ $<', '\t$(ASM_PSEUDO_OP_CONV) $< | $(AS) $(ASFLAGS) -I sound -o $@\n\t$(FIX_UNDERSCORE) $@'))
+        elif i == 15:  # line 16 (0-indexed)
+            new_lines.append(line.replace('\t$(AS) $(ASFLAGS) -I sound -o $@ $<', '\t$(ASM_PSEUDO_OP_CONV) $< | $(AS) $(ASFLAGS) -I sound -o $@\n\t$(FIX_UNDERSCORE) $@'))
+        elif i == 14 or i == 16:
+            continue  # skip old lines
+        else:
+            new_lines.append(line)
+    file.write_text(''.join(new_lines))
+    print(f"Applied audio_rules.mk")
 
 def apply_graphics_rules():
     """Apply changes to graphics_file_rules.mk"""
@@ -140,89 +136,6 @@ def apply_mid2agb():
     else:
         print(f"Warning: tools/mid2agb/agb.cpp patterns not found")
 
-def apply_preproc_cpp():
-    """Apply changes to tools/preproc/asm_file.cpp"""
-    file = UPSTREAM / "tools" / "preproc" / "asm_file.cpp"
-    content = file.read_text()
-    old1 = """        if (m_buffer[m_pos] == '#')
-        {
-            currentHeaderLine = ParseLineSkipInEnum();
-        }
-        else if (m_buffer[m_pos] != ',')"""
-    new1 = """        if (m_buffer[m_pos] != ',')"""
-
-    # Remove the ParseLineSkipInEnum function implementation
-    old2 = """int AsmFile::ParseLineSkipInEnum(void)
-{
-    m_pos++;
-    while (m_buffer[m_pos] == ' ' || m_buffer[m_pos] == '\t')
-        m_pos++;
-
-     if (!IsAsciiDigit(m_buffer[m_pos]))
-        RaiseError("malformatted line indicator found inside `enum`, expected line number");
-
-    unsigned n = 0;
-    int digit = 0;
-    while ((digit = ConvertDigit(m_buffer[m_pos++], 10)) != -1)
-        n = 10 * n + digit;
-
-    while (m_buffer[m_pos] == ' ' || m_buffer[m_pos] == '\t')
-        m_pos++;
-
-    if (m_buffer[m_pos++] != '"')
-        RaiseError("malformatted line indicator found before `enum`, expected filename");
-
-    while (m_buffer[m_pos] != '"')
-    {
-        unsigned char c = m_buffer[m_pos++];
-
-        if (c == 0)
-        {
-            if (m_pos >= m_size)
-                RaiseError("unexpected EOF in line indicator");
-            else
-                RaiseError("unexpected null character in line indicator");
-        }
-
-        if (!IsAsciiPrintable(c))
-            RaiseError("unexpected character '\\x%02X' in line indicator", c);
-
-        if (c == '\\')
-        {
-            c = m_buffer[m_pos];
-            RaiseError("unexpected escape '\\%c' in line indicator", c);
-        }
-    }
-    return n - 1;
-}"""
-    new2 = ""
-
-    changed = False
-    if old1 in content:
-        content = content.replace(old1, new1)
-        changed = True
-    if old2 in content:
-        content = content.replace(old2, new2)
-        changed = True
-    if changed:
-        file.write_text(content)
-        print(f"Applied tools/preproc/asm_file.cpp")
-    else:
-        print(f"Warning: tools/preproc/asm_file.cpp patterns not found")
-
-def apply_preproc_h():
-    """Apply changes to tools/preproc/asm_file.h"""
-    file = UPSTREAM / "tools" / "preproc" / "asm_file.h"
-    content = file.read_text()
-    old = "    int ParseLineSkipInEnum(void);"
-    new = ""
-    if old in content:
-        content = content.replace(old, new)
-        file.write_text(content)
-        print(f"Applied tools/preproc/asm_file.h")
-    else:
-        print(f"Warning: tools/preproc/asm_file.h pattern not found")
-
 if __name__ == "__main__":
     print("Applying manual patch changes to build/upstream...")
     apply_audio_rules()
@@ -230,6 +143,4 @@ if __name__ == "__main__":
     apply_map_data_rules()
     apply_mapjson()
     apply_mid2agb()
-    apply_preproc_cpp()
-    apply_preproc_h()
     print("Done!")
