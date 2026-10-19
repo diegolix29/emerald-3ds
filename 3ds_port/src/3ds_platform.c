@@ -471,7 +471,6 @@ void CtrPlatform_Shutdown(void)
     LocalLink_Shutdown();
     CtrVideo_Shutdown();
     CtrAudio_Shutdown();
-    CtrInput_Shutdown();
     CtrLog_Write(CTR_LOG_BOOT, "clean shutdown, platform frames=%llu", (unsigned long long)sFrames);
     CtrScenario_Close();
     aptUnhook(&sAptHook);

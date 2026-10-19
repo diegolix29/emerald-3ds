@@ -208,11 +208,9 @@ int main(int argc, char **argv)
                 groundSeconds += Seconds() - start;
             }
             terrainCount = b.count;
-            for (int pass = 0; pass < 2; ++pass)
-                for (int row = y0; row < y1; ++row)
-                    for (int col = x0; col < x1; ++col)
-                        VoxelTree_EmitInstance(&b, &sMap, col, row, col + 1, row + 1,
-                                               pass == 0 ? VOXEL_TREE_TOPS : VOXEL_TREE_CROWNS);
+            for (int row = y0; row < y1; ++row)
+                for (int col = x0; col < x1; ++col)
+                    VoxelTree_EmitInstance(&b, &sMap, col, row, col + 1, row + 1);
             buildingFirst = b.count;
             while (!VoxelBuildings_EmitSome(&b, &sMap, x0, y0, x1, y1, &cursor, 0xFFFFFFFFu))
                 ;

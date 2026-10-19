@@ -95,7 +95,6 @@ void VoxelBuilder_Init(VoxelBuilder *builder, VoxelVertex *storage, unsigned cap
     builder->lightingConstant = -1.0f;
     builder->rounded = false;
     builder->vertexFace = false;
-    builder->crowns = NULL;
     builder->statics = NULL;
     builder->staticCapacity = 0;
     builder->staticCount = 0;

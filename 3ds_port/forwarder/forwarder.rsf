@@ -182,7 +182,6 @@ AccessControlInfo:
    - ldr:ro
    - ir:USER
    - ir:u
-   - ir:rst
    - csnd:SND
    - am:u
    - ns:s

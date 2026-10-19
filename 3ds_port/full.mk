@@ -28,15 +28,12 @@ BRIDGE_FLAGS := -DPORT_BRIDGE
 # include paths there), so every search path is absolute.
 FULL_INCLUDES := -iquote $(abspath compat) -iquote $(abspath include) -iquote $(abspath $(ROOT)/include)
 FULL_INCLUDES += -iquote $(abspath $(ROOT)/include/constants) -iquote $(abspath $(ROOT))
-FULL_INCLUDES += -I$(CTRULIB)/include -iquote $(abspath src) -iquote $(abspath src/voxel)
 FULLFLAGS := $(filter-out -iquote include -iquote ../include -iquote ../include/constants -iquote ..,$(GAMEFLAGS)) $(FULL_INCLUDES) $(BRIDGE_FLAGS)
 FULLCFLAGS := $(GAME_ARCH) $(filter-out $(ARCH),$(GAMECFLAGS))
 
 ROOT_C_SRCS := $(wildcard $(ROOT)/src/*.c $(ROOT)/src/*/*.c $(ROOT)/src/*/*/*.c)
 # GBA-only link/multiboot programs; 3ds_compat.c provides their entry points.
 ROOT_C_SRCS := $(filter-out $(ROOT)/src/berry_fix_program.c $(ROOT)/src/ereader_screen.c $(ROOT)/src/mystery_gift_menu.c $(ROOT)/src/mystery_event_menu.c,$(ROOT_C_SRCS))
-# Voxel files and bridge files are compiled separately by the port's Makefile
-ROOT_C_SRCS := $(filter-out $(wildcard $(ROOT)/src/voxel/*.c) $(ROOT)/src/3ds_game_bridge.c $(ROOT)/src/3ds_extras.c $(ROOT)/src/3ds_video.c $(ROOT)/src/3ds_input.c,$(ROOT_C_SRCS))
 
 ROOT_DATA_SRCS := $(wildcard $(ROOT)/data/*.s)
 ROOT_DATA_SRCS := $(filter-out $(ROOT)/data/multiboot_berry_glitch_fix.s $(ROOT)/data/multiboot_ereader.s \
@@ -120,8 +117,7 @@ VOXEL_GAME_SRCS := src/voxel/voxel_world.c src/voxel/voxel_camera.c \
 	src/voxel/voxel_atlas.c src/voxel/voxel_mesh_builder.c src/voxel/voxel_entities.c \
 	src/voxel/voxel_regions.c src/voxel/voxel_tree.c src/voxel/voxel_sign.c \
 	src/voxel/voxel_building.c src/voxel/voxel_relief.c \
-	src/voxel/voxel_arena.c src/voxel/voxel_grade.c src/voxel/voxel_battle.c \
-	src/voxel/voxel_freecam.c src/voxel/voxel_freemove.c
+	src/voxel/voxel_arena.c src/voxel/voxel_grade.c src/voxel/voxel_battle.c
 ifeq ($(VOXEL_LIGHTING),1)
 VOXEL_GAME_SRCS += src/voxel/voxel_lighting.c
 endif
@@ -527,28 +523,6 @@ build/voxel_world_hash_test.exe: tests/voxel_world_hash_test.c src/voxel/voxel_w
 	@mkdir -p $(@D)
 	$(HOSTCC) -std=gnu99 -O2 -DPORTABLE -DMODERN=1 -D__INTELLISENSE__ \
 		-iquote compat -iquote ../include -Isrc/voxel tests/voxel_world_hash_test.c -o $@
-
-# The free-roam camera's math (1ST/3RD of OPTIONS' CAMERA): pure C, host-tested.
-verify: verify-voxel-freecam
-.PHONY: verify-voxel-freecam
-verify-voxel-freecam: build/voxel_freecam_test.exe
-	./build/voxel_freecam_test.exe
-
-build/voxel_freecam_test.exe: tests/voxel_freecam_test.c src/voxel/voxel_freecam.c src/voxel/voxel_freecam.h
-	@mkdir -p $(@D)
-	$(HOSTCC) -std=c99 -O2 -Wall -Wextra -Werror -Iinclude -Isrc/voxel \
-		tests/voxel_freecam_test.c src/voxel/voxel_freecam.c -lm -o $@
-
-# The free walk's offset inside a tile (MOVE: FREE), against a model of the grid.
-verify: verify-voxel-freemove
-.PHONY: verify-voxel-freemove
-verify-voxel-freemove: build/voxel_freemove_test.exe
-	./build/voxel_freemove_test.exe
-
-build/voxel_freemove_test.exe: tests/voxel_freemove_test.c src/voxel/voxel_freemove.c src/voxel/voxel_freemove.h
-	@mkdir -p $(@D)
-	$(HOSTCC) -std=c99 -O2 -Wall -Wextra -Werror -Isrc/voxel \
-		tests/voxel_freemove_test.c src/voxel/voxel_freemove.c -lm -o $@
 
 verify: verify-voxel-arena
 .PHONY: verify-voxel-arena

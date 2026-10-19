@@ -1,7 +1,6 @@
 # Bootstrapped upstream tree and build outputs
 /build/
 /dist/
-/.vs/
 3ds_port/build/
 3ds_port/dist/
 3ds_port/romfs/**
