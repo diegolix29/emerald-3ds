@@ -161,7 +161,7 @@ def apply_preproc_h():
     """Apply changes to tools/preproc/asm_file.h"""
     file = UPSTREAM / "tools" / "preproc" / "asm_file.h"
     content = file.read_text()
-    old = "\tint ParseLineSkipInEnum(void);"
+    old = "    int ParseLineSkipInEnum(void);"
     new = ""
     if old in content:
         content = content.replace(old, new)
